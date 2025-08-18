@@ -16,6 +16,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Force 32-bit process so we can load vendor JNI libs which are only provided for armeabi-v7a
+        // Remove this once 64-bit (arm64-v8a) versions of the vendor libraries are available
+        ndk {
+            abiFilters += listOf("armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -57,7 +63,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     
     // CM30 Hardware Library
-    implementation(files("CM30-HardwareLibrary-1.0.9.aar"))
+    implementation(files("libs/CM30-HardwareLibrary-1.0.9.aar"))
     
     // myPOS SDK
     implementation("com.mypos:mypossmartsdk:1.0.6")

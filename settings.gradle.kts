@@ -17,6 +17,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://mypos-maven.s3.eu-central-1.amazonaws.com/maven") }
+        flatDir { dirs("app/libs") }
     }
 }
 
