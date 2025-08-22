@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mdbbill.data.OperatingMode
 import com.example.mdbbill.viewmodel.AdminViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun AdminPanelScreen(
@@ -37,15 +38,42 @@ fun AdminPanelScreen(
     val minimumAmount by viewModel.minimumAmount.collectAsStateWithLifecycle()
     val maximumAmount by viewModel.maximumAmount.collectAsStateWithLifecycle()
     var showPinDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var lastSnackbarSuccess by remember { mutableStateOf(false) }
+
+    // Local input states for validation before saving
+    var minInput by remember(minimumAmount) { mutableStateOf(minimumAmount.toString()) }
+    var maxInput by remember(maximumAmount) { mutableStateOf(maximumAmount.toString()) }
+    // Local inputs for preferred amounts to validate on save
+    var pref1Input by remember(predefinedAmount1) { mutableStateOf(predefinedAmount1.toString()) }
+    var pref2Input by remember(predefinedAmount2) { mutableStateOf(predefinedAmount2.toString()) }
+    var pref3Input by remember(predefinedAmount3) { mutableStateOf(predefinedAmount3.toString()) }
     
     // Handle successful test connection
     LaunchedEffect(Unit) { delay(0) }
     
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8FAFF))
-    ) {
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                val bg = if (lastSnackbarSuccess) Color(0xFFD1FAE5) else Color(0xFFFECACA)
+                val fg = if (lastSnackbarSuccess) Color(0xFF065F46) else Color(0xFF7F1D1D)
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = bg,
+                    contentColor = fg,
+                    actionContentColor = fg,
+                    dismissActionContentColor = fg
+                )
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF8FAFF))
+                .padding(innerPadding)
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,20 +108,20 @@ fun AdminPanelScreen(
             SettingsSection(title = "PREFERRED AMOUNTS") {
                 LabeledCurrencyField(
                     title = "Preferred Amount 1",
-                    value = predefinedAmount1.toString(),
-                    onValueChange = { viewModel.setPredefinedAmount1(it.toIntOrNull() ?: 0) }
+                    value = pref1Input,
+                    onValueChange = { pref1Input = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 LabeledCurrencyField(
                     title = "Preferred Amount 2",
-                    value = predefinedAmount2.toString(),
-                    onValueChange = { viewModel.setPredefinedAmount2(it.toIntOrNull() ?: 0) }
+                    value = pref2Input,
+                    onValueChange = { pref2Input = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 LabeledCurrencyField(
                     title = "Preferred Amount 3",
-                    value = predefinedAmount3.toString(),
-                    onValueChange = { viewModel.setPredefinedAmount3(it.toIntOrNull() ?: 0) }
+                    value = pref3Input,
+                    onValueChange = { pref3Input = it }
                 )
             }
             
@@ -103,14 +131,14 @@ fun AdminPanelScreen(
             SettingsSection(title = "AMOUNT LIMITS") {
                 LabeledCurrencyField(
                     title = "Minimum Amount",
-                    value = minimumAmount.toString(),
-                    onValueChange = { viewModel.setMinimumAmount(it.toFloatOrNull() ?: 0f) }
+                    value = minInput,
+                    onValueChange = { minInput = it }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 LabeledCurrencyField(
                     title = "Maximum Amount",
-                    value = maximumAmount.toString(),
-                    onValueChange = { viewModel.setMaximumAmount(it.toFloatOrNull() ?: 0f) }
+                    value = maxInput,
+                    onValueChange = { maxInput = it }
                 )
             }
             
@@ -152,7 +180,38 @@ fun AdminPanelScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { /* values are persisted on change */ },
+                onClick = {
+                    val min = minInput.toFloatOrNull()
+                    val max = maxInput.toFloatOrNull()
+                    val p1 = pref1Input.toIntOrNull()
+                    val p2 = pref2Input.toIntOrNull()
+                    val p3 = pref3Input.toIntOrNull()
+
+                    val error: String? = when {
+                        min == null || max == null -> "Enter valid numeric amounts"
+                        min <= 0f -> "Minimum must be greater than 0"
+                        max < min -> "Maximum must be greater than or equal to minimum"
+                        kotlin.math.floor(max.toDouble()) >= 1_000_000 -> "Maximum must be at most 6 digits"
+                        p1 == null || p2 == null || p3 == null -> "Enter valid numeric preferred amounts"
+                        p1 <= 0 || p2 <= 0 || p3 <= 0 -> "Preferred amounts must be greater than 0"
+                        p1.toFloat() < min || p2.toFloat() < min || p3.toFloat() < min -> "Preferred amounts cannot be less than minimum ($min)"
+                        p1.toFloat() > max || p2.toFloat() > max || p3.toFloat() > max -> "Preferred amounts cannot exceed maximum ($max)"
+                        else -> null
+                    }
+
+                    if (error != null) {
+                        lastSnackbarSuccess = false
+                        scope.launch { snackbarHostState.showSnackbar(message = error) }
+                    } else {
+                        viewModel.setMinimumAmount(min!!)
+                        viewModel.setMaximumAmount(max!!)
+                        viewModel.setPredefinedAmount1(p1!!)
+                        viewModel.setPredefinedAmount2(p2!!)
+                        viewModel.setPredefinedAmount3(p3!!)
+                        lastSnackbarSuccess = true
+                        scope.launch { snackbarHostState.showSnackbar(message = "Settings saved") }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -206,6 +265,7 @@ fun AdminPanelScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
 }
 
 @Composable

@@ -24,7 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mdbbill.R
+import com.example.mdbbill.viewmodel.AdminViewModel
 import com.example.mdbbill.viewmodel.PaymentResult
 import com.example.mdbbill.viewmodel.PaymentViewModel
  
@@ -32,12 +34,16 @@ import com.example.mdbbill.viewmodel.PaymentViewModel
 @Composable
 fun AmountSelectionScreen(
     viewModel: PaymentViewModel,
+    adminViewModel: AdminViewModel = viewModel(),
     onBack: () -> Unit
 ) {
     val selectedAmount by viewModel.selectedAmount.collectAsStateWithLifecycle()
     val customAmount by viewModel.customAmount.collectAsStateWithLifecycle()
     val isPaymentProcessing by viewModel.isPaymentProcessing.collectAsStateWithLifecycle()
     val paymentResult by viewModel.paymentResult.collectAsStateWithLifecycle()
+    val predefinedAmount2 by adminViewModel.predefinedAmount2.collectAsStateWithLifecycle()
+    val predefinedAmount1 by adminViewModel.predefinedAmount1.collectAsStateWithLifecycle()
+    val predefinedAmount3 by adminViewModel.predefinedAmount3.collectAsStateWithLifecycle()
 
     // Snackbars below handle result visibility and clearing
 
@@ -125,16 +131,16 @@ fun AmountSelectionScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    QuickAmountButton("$5", selectedAmount == 5.0f, modifier = Modifier.weight(1f)) {
-                        viewModel.setSelectedAmount(5.0f)
+                    QuickAmountButton("$$predefinedAmount1", selectedAmount == predefinedAmount1.toFloat(), modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(predefinedAmount1.toFloat())
                         viewModel.setCustomAmount("")
                     }
-                    QuickAmountButton("$10", selectedAmount == 10.0f, modifier = Modifier.weight(1f)) {
-                        viewModel.setSelectedAmount(10.0f)
+                    QuickAmountButton("$$predefinedAmount2", selectedAmount == predefinedAmount2.toFloat(), modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(predefinedAmount2.toFloat())
                         viewModel.setCustomAmount("")
                     }
-                    QuickAmountButton("$15", selectedAmount == 15.0f, modifier = Modifier.weight(1f)) {
-                        viewModel.setSelectedAmount(15.0f)
+                    QuickAmountButton("$$predefinedAmount3", selectedAmount == predefinedAmount3.toFloat(), modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(predefinedAmount3.toFloat())
                         viewModel.setCustomAmount("")
                     }
                 }
