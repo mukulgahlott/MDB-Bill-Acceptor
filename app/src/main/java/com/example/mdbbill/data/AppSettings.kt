@@ -24,17 +24,17 @@ class AppSettings(context: Context) {
         set(value) = prefs.edit { putString("PROCESSOR", value.name) }
     
     // Predefined amounts
-    var predefinedAmount1: Float
-        get() = prefs.getFloat("PREDEF_AMOUNT_1", 5.0f)
-        set(value) = prefs.edit { putFloat("PREDEF_AMOUNT_1", value) }
+    var predefinedAmount1: Int
+        get() = prefs.getInt("PREDEF_AMOUNT_1", 5)
+        set(value) = prefs.edit { putInt("PREDEF_AMOUNT_1", value) }
     
-    var predefinedAmount2: Float
-        get() = prefs.getFloat("PREDEF_AMOUNT_2", 10.0f)
-        set(value) = prefs.edit { putFloat("PREDEF_AMOUNT_2", value) }
+    var predefinedAmount2: Int
+        get() = prefs.getInt("PREDEF_AMOUNT_2", 10)
+        set(value) = prefs.edit { putInt("PREDEF_AMOUNT_2", value) }
     
-    var predefinedAmount3: Float
-        get() = prefs.getFloat("PREDEF_AMOUNT_3", 20.0f)
-        set(value) = prefs.edit { putFloat("PREDEF_AMOUNT_3", value) }
+    var predefinedAmount3: Int
+        get() = prefs.getInt("PREDEF_AMOUNT_3", 20)
+        set(value) = prefs.edit { putInt("PREDEF_AMOUNT_3", value) }
 
     // Minimum amount
     var minimumAmount: Float

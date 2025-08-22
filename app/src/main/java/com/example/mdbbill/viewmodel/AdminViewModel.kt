@@ -23,13 +23,13 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     val paymentProcessor: StateFlow<PaymentProcessor> = _paymentProcessor.asStateFlow()
 
     private val _predefinedAmount1 = MutableStateFlow(appSettings.predefinedAmount1)
-    val predefinedAmount1: StateFlow<Float> = _predefinedAmount1.asStateFlow()
+    val predefinedAmount1: StateFlow<Int> = _predefinedAmount1.asStateFlow()
 
     private val _predefinedAmount2 = MutableStateFlow(appSettings.predefinedAmount2)
-    val predefinedAmount2: StateFlow<Float> = _predefinedAmount2.asStateFlow()
+    val predefinedAmount2: StateFlow<Int> = _predefinedAmount2.asStateFlow()
 
     private val _predefinedAmount3 = MutableStateFlow(appSettings.predefinedAmount3)
-    val predefinedAmount3: StateFlow<Float> = _predefinedAmount3.asStateFlow()
+    val predefinedAmount3: StateFlow<Int> = _predefinedAmount3.asStateFlow()
 
     private val _minimumAmount = MutableStateFlow(appSettings.minimumAmount)
     val minimumAmount: StateFlow<Float> = _minimumAmount.asStateFlow()
@@ -62,17 +62,17 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         _paymentProcessor.value = processor
     }
 
-    fun setPredefinedAmount1(amount: Float) {
+    fun setPredefinedAmount1(amount: Int) {
         appSettings.predefinedAmount1 = amount
         _predefinedAmount1.value = amount
     }
 
-    fun setPredefinedAmount2(amount: Float) {
+    fun setPredefinedAmount2(amount: Int) {
         appSettings.predefinedAmount2 = amount
         _predefinedAmount2.value = amount
     }
 
-    fun setPredefinedAmount3(amount: Float) {
+    fun setPredefinedAmount3(amount: Int) {
         appSettings.predefinedAmount3 = amount
         _predefinedAmount3.value = amount
     }

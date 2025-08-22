@@ -1,61 +1,54 @@
 package com.example.mdbbill.ui.screens
-
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.mdbbill.R
 import com.example.mdbbill.viewmodel.PaymentResult
 import com.example.mdbbill.viewmodel.PaymentViewModel
+ 
 
 @Composable
 fun AmountSelectionScreen(
     viewModel: PaymentViewModel,
     onBack: () -> Unit
 ) {
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF1976D2),
-            Color(0xFF1565C0),
-            Color(0xFF0D47A1)
-        )
-    )
-    
     val selectedAmount by viewModel.selectedAmount.collectAsStateWithLifecycle()
     val customAmount by viewModel.customAmount.collectAsStateWithLifecycle()
     val isPaymentProcessing by viewModel.isPaymentProcessing.collectAsStateWithLifecycle()
     val paymentResult by viewModel.paymentResult.collectAsStateWithLifecycle()
-    
-    LaunchedEffect(paymentResult) {
-        paymentResult?.let {
-            if (it is PaymentResult.Success) {
-                // Auto-clear success result after 3 seconds
-                kotlinx.coroutines.delay(3000)
-                viewModel.clearPaymentResult()
-                viewModel.resetAmount()
-            }
-        }
-    }
-    
+
+    // Snackbars below handle result visibility and clearing
+
+    val background = Color(0xFFF5F7FB)
+    val primary = Color(0xFF5B86E5)
+    val textPrimary = Color(0xFF5B6573)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradient)
+            .background(background)
     ) {
         // Back button
         IconButton(
@@ -67,253 +60,224 @@ fun AmountSelectionScreen(
             Icon(
                 imageVector = Icons.Default.ArrowBack,
                 contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
+                tint = textPrimary
             )
         }
-        
+
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
-            Text(
-                text = "Select Amount",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                ),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Selected amount display
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.1f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Selected Amount",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "€${String.format("%.2f", selectedAmount)}",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Predefined amounts
-            Text(
-                text = "Quick Select",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Amount buttons grid
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AmountButton(
-                    amount = 5.0f,
-                    isSelected = selectedAmount == 5.0f,
-                    onClick = { viewModel.setSelectedAmount(5.0f) },
-                    modifier = Modifier.weight(1f)
-                )
-                AmountButton(
-                    amount = 10.0f,
-                    isSelected = selectedAmount == 10.0f,
-                    onClick = { viewModel.setSelectedAmount(10.0f) },
-                    modifier = Modifier.weight(1f)
-                )
-                AmountButton(
-                    amount = 20.0f,
-                    isSelected = selectedAmount == 20.0f,
-                    onClick = { viewModel.setSelectedAmount(20.0f) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Custom amount section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.1f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Custom Amount",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = customAmount,
-                        onValueChange = { 
-                            viewModel.setCustomAmount(it)
-                            viewModel.setSelectedAmount(0f) // Clear predefined selection
-                        },
-                        label = { Text("Enter amount", color = Color.White.copy(alpha = 0.7f)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF1976D2),
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                            focusedLabelColor = Color(0xFF1976D2),
-                            unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
-                            cursorColor = Color(0xFF1976D2),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent
-                        ),
-                        singleLine = true,
-                        prefix = { Text("€", color = Color.White.copy(alpha = 0.7f)) }
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Payment button
-            Button(
-                onClick = { viewModel.processPayment() },
+            // Top: 40%
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF1976D2)
-                ),
-                enabled = !isPaymentProcessing && (selectedAmount > 0 || customAmount.isNotEmpty())
+                    .padding(vertical = 26.dp, horizontal = 16.dp)
+                    .weight(0.4f),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isPaymentProcessing) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color(0xFF1976D2),
-                            strokeWidth = 3.dp
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Opening myPOS...",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Process Payment",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-            }
-            
-            // Payment result
-            paymentResult?.let { result ->
+                Text(
+                    text = "Select Amount",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimary
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
+
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = when (result) {
-                            is PaymentResult.Success -> Color(0xFF2E7D32)
-                            is PaymentResult.Error -> Color(0xFFD32F2F)
-                        }
-                    )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val displayText =
+                            customAmount.ifEmpty { String.format("%.0f", selectedAmount) }
                         Text(
-                            text = when (result) {
-                                is PaymentResult.Success -> "myPOS Payment Successful!"
-                                is PaymentResult.Error -> "myPOS Payment Failed"
-                            },
-                            style = MaterialTheme.typography.titleLarge.copy(
+                            text = "$$displayText",
+                            style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            ),
-                            textAlign = TextAlign.Center
+                                color = textPrimary
+                            )
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = when (result) {
-                                is PaymentResult.Success -> "€${String.format("%.2f", result.amount)}"
-                                is PaymentResult.Error -> result.message
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Quick Select",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        color = textPrimary
+                    ),
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickAmountButton("$5", selectedAmount == 5.0f, modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(5.0f)
+                        viewModel.setCustomAmount("")
+                    }
+                    QuickAmountButton("$10", selectedAmount == 10.0f, modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(10.0f)
+                        viewModel.setCustomAmount("")
+                    }
+                    QuickAmountButton("$15", selectedAmount == 15.0f, modifier = Modifier.weight(1f)) {
+                        viewModel.setSelectedAmount(15.0f)
+                        viewModel.setCustomAmount("")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Bottom: 60% keypad
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.6f),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F2F6))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Left grid (3 columns x 4 rows)
+                    Column(
+                        modifier = Modifier.weight(3f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            KeypadButton("1", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "1") }
+                            KeypadButton("2", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "2") }
+                            KeypadButton("3", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "3") }
+                        }
+                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            KeypadButton("4", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "4") }
+                            KeypadButton("5", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "5") }
+                            KeypadButton("6", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "6") }
+                        }
+                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            KeypadButton("7", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "7") }
+                            KeypadButton("8", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "8") }
+                            KeypadButton("9", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "9") }
+                        }
+                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            KeypadButton("00", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "00") }
+                            KeypadButton("0", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "0") }
+                            KeypadButton("00", modifier = Modifier.weight(1f)) { onDigitPressed(viewModel, customAmount, "00") }
+                        }
+                    }
+
+                    // Right column: backspace on top, enter below spanning 3 rows
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                if (customAmount.isNotEmpty()) {
+                                    viewModel.setCustomAmount(customAmount.dropLast(1))
+                                    viewModel.setSelectedAmount(0f)
+                                }
                             },
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = Color.White
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                        if (result is PaymentResult.Success) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Receipt printed & MDB communication completed",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = Color.White.copy(alpha = 0.8f)
-                                ),
-                                textAlign = TextAlign.Center
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White)
+                        ) {
+                            Image(
+                                modifier = Modifier.padding(8.dp),
+                                painter = painterResource(id = R.drawable.back_space),
+                                contentDescription = "Backspace"
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (customAmount.isNotEmpty()) {
+                                    customAmount.toFloatOrNull()?.let { viewModel.setSelectedAmount(it) }
+                                }
+                                if (!isPaymentProcessing && (viewModel.selectedAmount.value > 0f)) {
+                                    viewModel.processPayment()
+                                }
+                            },
+                            enabled = !isPaymentProcessing && ((customAmount.isNotEmpty() && customAmount.toFloatOrNull() != null) || selectedAmount > 0f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(3f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = primary, disabledContainerColor = primary, contentColor = Color.White)
+                        ) {
+                            Image(
+                                modifier = Modifier.padding(8.dp),
+                                painter = painterResource(id = R.drawable.enter),
+                                contentDescription = "Enter"
                             )
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
+
+        // Snackbar overlay
+        var snackbarVisible by remember { mutableStateOf(false) }
+        var snackbarText by remember { mutableStateOf("") }
+        var snackbarSuccess by remember { mutableStateOf(true) }
+
+        LaunchedEffect(paymentResult) {
+            when (val r = paymentResult) {
+                is PaymentResult.Success -> {
+                    snackbarText = "Payment successful: $${String.format("%.2f", r.amount)}"
+                    snackbarSuccess = true
+                    snackbarVisible = true
+                    // Reset amount after success
+                    viewModel.resetAmount()
+                }
+                is PaymentResult.Error -> {
+                    snackbarText = r.message
+                    snackbarSuccess = false
+                    snackbarVisible = true
+                }
+                null -> {}
+            }
+        }
+
+        LaunchedEffect(snackbarVisible) {
+            if (snackbarVisible) {
+                kotlinx.coroutines.delay(4000)
+                snackbarVisible = false
+                viewModel.clearPaymentResult()
+            }
+        }
+
+        DismissibleSnackbar(
+            visible = snackbarVisible,
+            message = snackbarText,
+            isSuccess = snackbarSuccess,
+            onDismiss = {
+                snackbarVisible = false
+                viewModel.clearPaymentResult()
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = 16.dp)
+        )
     }
 }
 
@@ -354,4 +318,103 @@ private fun AmountButton(
             )
         )
     }
-} 
+}
+
+@Composable
+private fun QuickAmountButton(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val primary = Color(0xFF5B86E5)
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier
+            .height(75.dp)
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+                val dashLength = 10.dp.toPx()
+                val gapLength = 6.dp.toPx()
+
+                // Create a dashed stroke style
+                val stroke = Stroke(
+                    width = strokeWidth,
+                    pathEffect = PathEffect.dashPathEffect(
+                        floatArrayOf(dashLength, gapLength), 0f
+                    )
+                )
+                val shape = RoundedCornerShape(8.dp)
+                val outline = shape.createOutline(size, layoutDirection, this)
+
+                drawOutline(
+                    outline = outline,
+                    color = primary,
+                    style = stroke
+                )
+            },
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) Color(0xFFE8F0FF) else Color.White,
+            contentColor = primary
+        ),
+        border = null // remove default border
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        )
+    }
+}
+
+@Composable
+private fun KeypadButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxHeight(),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF5B6573))
+    ) {
+        Text(text = label, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+    }
+}
+
+private fun onDigitPressed(viewModel: PaymentViewModel, current: String, token: String) {
+    val newValue = (current + token).take(9)
+    viewModel.setCustomAmount(newValue.trimStart('0').ifEmpty { "0" })
+    viewModel.setSelectedAmount(0f)
+}
+
+@Composable
+private fun DismissibleSnackbar(
+    visible: Boolean,
+    message: String,
+    isSuccess: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bg = if (isSuccess) Color(0xFF2E7D32) else Color(0xFFD32F2F)
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically { -it } + fadeIn(),
+        exit = slideOutVertically { -it } + fadeOut(),
+        modifier = modifier
+    ) {
+        Surface(
+            color = bg,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
