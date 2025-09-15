@@ -1,0 +1,42 @@
+package com.example.mdbbill.peripheral
+
+object Event {
+    /**
+     * Events for app
+     */
+    
+    /** cashless */
+    const val EV_CASHLESS_DETECTED = 0
+    const val EV_CASHLESS_NON_RESPONSE = 1
+    const val EV_CASHLESS_BEGIN_SESSION = 2
+    const val EV_CASHLESS_SESSION_CANCEL = 3
+    const val EV_CASHLESS_VEND_APPROVED = 4
+    const val EV_CASHLESS_VEND_DENIED = 5
+    const val EV_CASHLESS_END_SESSION = 6
+    const val EV_CASHLESS_CANCELED = 7
+    const val EV_CASHLESS_MALFUNCTION = 8
+    const val EV_CASHLESS_CMD_OUT_OF_SEQUENCE = 9
+
+    /**coin changer*/
+    const val EV_COIN_CHANGER_DETECTED = 20
+    const val EV_COIN_CHANGER_NON_RESPONSE = 21
+    const val EV_COIN_CHANGER_ACTIVITY_TYPE_REPORT = 22
+
+    /** Bill validator*/
+    const val EV_BILL_VALIDATOR_DETECTED = 40
+    const val EV_BILL_VALIDATOR_NON_RESPONSE = 41
+    const val EV_BILL_VALIDATOR_JUST_RESET = 42
+    const val EV_BILL_VALIDATOR_ENTER_SERVICE_MODE = 43
+    const val EV_BILL_VALIDATOR_ENTER_SALE_MODE = 44
+    const val EV_BILL_VALIDATOR_INSERT_BILL = 45
+    const val EV_BILL_VALIDATOR_STACKERED_IN_ESCROW = 46
+    const val EV_BILL_VALIDATOR_RETURNED_IN_ESCROW = 47
+    const val EV_BILL_VALIDATOR_ERROR_AT_VALIDATOR = 48
+    const val EV_BILL_VALIDATOR_ERROR_AT_STACKER = 49
+    const val EV_BILL_VALIDATOR_BILL_DISPENSE = 50
+    const val EV_BILL_VALIDATOR_VALUE_DISPENSE = 51
+    const val EV_BILL_VALIDATOR_BILL_DISPENSE_IN_ESCROW = 52
+    const val EV_BILL_VALIDATOR_VALUE_DISPENSE_IN_ESCROW = 53
+    const val EV_BILL_VALIDATOR_CANCEL_DISPENSE = 54
+    const val EV_BILL_VALIDATOR_MULTIPLE_DISPENSE = 55
+}
