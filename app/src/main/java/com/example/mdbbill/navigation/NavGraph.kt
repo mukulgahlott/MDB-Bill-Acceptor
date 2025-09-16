@@ -1,9 +1,11 @@
 package com.example.mdbbill.navigation
 
+import android.os.Handler
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.mdbbill.mdb.VendingMachineController
 import com.example.mdbbill.ui.screens.AdminPanelScreen
 import com.example.mdbbill.ui.screens.AmountSelectionScreen
 import com.example.mdbbill.ui.screens.PasswordScreen
@@ -15,7 +17,8 @@ import com.example.mdbbill.viewmodel.PaymentViewModel
 fun NavGraph(
     navController: NavHostController,
     adminViewModel: AdminViewModel,
-    paymentViewModel: PaymentViewModel
+    paymentViewModel: PaymentViewModel,
+    eventHandler: Handler
 ) {
     NavHost(
         navController = navController,
@@ -63,6 +66,7 @@ fun NavGraph(
         composable(Screen.AmountSelection.route) {
             AmountSelectionScreen(
                 viewModel = paymentViewModel,
+                eventHandler = eventHandler,
                 onBack = {
                     navController.popBackStack()
                 }

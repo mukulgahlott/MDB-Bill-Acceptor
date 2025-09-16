@@ -7,9 +7,8 @@ import com.example.mdbbill.peripheral.BillValidator
 import com.example.mdbbill.peripheral.CashLessDevice
 import com.example.mdbbill.peripheral.CoinChanger
 import com.example.mdbbill.peripheral.Constant
-import kotlinx.coroutines.*
 
-class VendingMachineController private constructor() : Thread("VMController Thread") {
+class VendingMachineController() : Thread("VMController Thread") {
     
     companion object {
         private var instance: VendingMachineController? = null
@@ -20,11 +19,16 @@ class VendingMachineController private constructor() : Thread("VMController Thre
             }
             return instance!!
         }
+        
+        fun createNewInstance(): VendingMachineController {
+            // Always create a new instance
+            return VendingMachineController()
+        }
     }
 
     /**VMC product information*/
     val vmcFeatureLevel = 2
-    val manufacturerCode = byteArrayOf('c'.toByte(), 't'.toByte(), 'k'.toByte())
+    val manufacturerCode = byteArrayOf('c'.code.toByte(), 't'.code.toByte(), 'k'.code.toByte())
     val serialNumber = "ctk-vmc12345".toByteArray()
     val modelNumber = "cm30-vmc1234".toByteArray()
     val softwareVersion = "10".toByteArray()
@@ -64,22 +68,60 @@ class VendingMachineController private constructor() : Thread("VMController Thre
     fun initialize(handler: Handler): Boolean {
         this.handler = handler
         
-        // Open MDB Master connection
-        if (mdbMaster?.open() != MdbMaster.SUCCESS) {
+        Log.d("VendingMachineController", "Initializing VendingMachineController...")
+        Log.d("VendingMachineController", "mdbMaster instance: $mdbMaster")
+        
+        // Check if MdbMaster is available
+        if (mdbMaster == null) {
+            Log.e("VendingMachineController", "MdbMaster.getInstance() returned null - CM30 SDK not properly integrated")
+            Log.e("VendingMachineController", "Please check: 1) CM30 SDK is added to project, 2) Hardware permissions, 3) Device compatibility")
             return false
         }
         
-        // Initialize payment devices
+        // Try to open MDB Master connection
+        Log.d("VendingMachineController", "Attempting to open MDB Master connection...")
+        val openResult = mdbMaster!!.open()
+        Log.d("VendingMachineController", "MDB Master open() result: $openResult")
+        Log.d("VendingMachineController", "MdbMaster.SUCCESS constant: ${MdbMaster.SUCCESS}")
+        
+        if (openResult != MdbMaster.SUCCESS) {
+            Log.w("VendingMachineController", "MDB Master connection failed. Result: $openResult")
+            Log.w("VendingMachineController", "Possible causes:")
+            Log.w("VendingMachineController", "1. CM30 hardware not connected")
+            Log.w("VendingMachineController", "2. USB OTG not enabled")
+            Log.w("VendingMachineController", "3. Hardware drivers not installed")
+            Log.w("VendingMachineController", "4. Vending machine not connected to CM30")
+            Log.w("VendingMachineController", "5. MDB communication not established")
+            Log.w("VendingMachineController", "Continuing with simulated MDB devices for testing...")
+            
+            // Create simulated devices for testing when hardware is not available
+            if (cashlessDeviceSupport) {
+                cashLessDevice = CashLessDevice(null, handler) // Pass null for mdbMaster to indicate simulation mode
+                Log.d("VendingMachineController", "CashLessDevice initialized in simulation mode")
+            }
+            
+            Log.d("VendingMachineController", "VendingMachineController initialization completed (simulation mode)")
+            return true
+        }
+        
+        Log.d("VendingMachineController", "MDB Master connection opened successfully - CM30 hardware detected!")
+        Log.d("VendingMachineController", "Initializing real MDB devices...")
+        
+        // Initialize payment devices with real hardware
         if (coinChangerSupport) {
             coinChanger = CoinChanger(mdbMaster!!, handler)
+            Log.d("VendingMachineController", "CoinChanger initialized with real hardware")
         }
         if (billValidatorSupport) {
             billValidator = BillValidator(mdbMaster!!, handler)
+            Log.d("VendingMachineController", "BillValidator initialized with real hardware")
         }
         if (cashlessDeviceSupport) {
             cashLessDevice = CashLessDevice(mdbMaster!!, handler)
+            Log.d("VendingMachineController", "CashLessDevice initialized with real hardware")
         }
 
+        Log.d("VendingMachineController", "VendingMachineController initialization completed with real hardware")
         return true
     }
 
@@ -112,13 +154,55 @@ class VendingMachineController private constructor() : Thread("VMController Thre
         mdbMaster?.close()
     }
 
+    fun isThreadRunning(): Boolean {
+        return isAlive && isRunning
+    }
+    
+    fun startIfNotRunning() {
+        if (!isAlive) {
+            Log.d("VendingMachineController", "Starting new VMC thread...")
+            start()
+        } else if (isRunning) {
+            Log.d("VendingMachineController", "VMC thread already running, skipping start")
+        } else {
+            Log.d("VendingMachineController", "VMC thread finished, cannot restart - this should not happen with proper lifecycle management")
+            throw IllegalStateException("VMC thread has finished and cannot be restarted. Use proper lifecycle management.")
+        }
+    }
+
     fun destroy() {
+        Log.d("VendingMachineController", "Destroying VMC - stopping thread...")
         isRunning = false
         try {
-            join()
+            if (isAlive) {
+                join(2000) // Wait up to 2 seconds for thread to finish
+                if (isAlive) {
+                    Log.w("VendingMachineController", "Thread did not stop gracefully, interrupting...")
+                    interrupt()
+
+                    join(1000) // Wait another second after interrupt
+                }
+            }
         } catch (e: InterruptedException) {
-            e.printStackTrace()
+            Log.w("VendingMachineController", "Thread interrupted during destroy", e)
         }
+        
+        // Close MDB master connection
+        try {
+            mdbMaster?.close()
+        } catch (e: Exception) {
+            Log.e("VendingMachineController", "Error closing MDB master", e)
+        }
+        
+        Log.d("VendingMachineController", "VMC destroyed successfully")
         instance = null
+    }
+
+    /**
+     * Get the cashless device for external operations
+     */
+    fun getCashLessDevice(): CashLessDevice? {
+        Log.d("VendingMachineController", "getCashLessDevice() called - cashLessDevice is ${if (cashLessDevice != null) "not null" else "null"}")
+        return cashLessDevice
     }
 }

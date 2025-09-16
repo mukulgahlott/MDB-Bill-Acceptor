@@ -4,7 +4,7 @@ import android.hardware.mdbMaster.MdbMaster
 import android.os.Handler
 
 abstract class MdbDeviceBase(
-    protected val mdbMaster: MdbMaster,
+    protected val mdbMaster: MdbMaster?,
     protected val handler: Handler
 ) {
     /** mdb command data*/

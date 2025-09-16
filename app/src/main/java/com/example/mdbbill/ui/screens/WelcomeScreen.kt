@@ -1,18 +1,25 @@
 package com.example.mdbbill.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +33,8 @@ fun WelcomeScreen(
 ) {
     var longPressCount by remember { mutableIntStateOf(0) }
     var showHiddenMessage by remember { mutableStateOf(false) }
+    var isLongPressing by remember { mutableStateOf(false) }
+    var longPressProgress by remember { mutableFloatStateOf(0f) }
     
     val gradient = Brush.verticalGradient(
         colors = listOf(
@@ -42,6 +51,21 @@ fun WelcomeScreen(
             showHiddenMessage = false
             longPressCount = 0
             onNavigateToPassword()
+        }
+    }
+    
+    LaunchedEffect(isLongPressing) {
+        if (isLongPressing) {
+            longPressProgress = 0f
+            while (isLongPressing && longPressProgress < 1f) {
+                delay(10)
+                longPressProgress += 0.01f
+            }
+            if (longPressProgress >= 1f) {
+                onNavigateToAmountSelection()
+            }
+            isLongPressing = false
+            longPressProgress = 0f
         }
     }
     
@@ -104,72 +128,64 @@ fun WelcomeScreen(
             
             Spacer(modifier = Modifier.height(64.dp))
             
-            // Main Payment Button
-            Button(
-                onClick = onNavigateToAmountSelection,
+            // Get Started Button with Long Press
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF1976D2)
-                )
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Pay by Card",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
+                    .size(200.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isLongPressing = true
+                                tryAwaitRelease()
+                                isLongPressing = false
+                            }
                         )
+                    }
+            ) {
+                // Progress ring
+                if (isLongPressing) {
+                    CircularProgressIndicator(
+                    progress = { longPressProgress },
+                    modifier = Modifier
+                                                .size(200.dp)
+                                                .align(Alignment.Center),
+                    color = Color.White,
+                    strokeWidth = 8.dp,
+                    trackColor = Color.White.copy(alpha = 0.3f),
+                    strokeCap = ProgressIndicatorDefaults.CircularDeterminateStrokeCap,
                     )
+                }
+                
+                // Main button
+                Column (modifier = Modifier
+                        .size(180.dp)
+                        .align(Alignment.Center).background(Color.White, shape = RoundedCornerShape(200.dp)),
+                    ) {
+                    Column(modifier = Modifier, verticalArrangement = Arrangement.Center) {
+                        Spacer(modifier = Modifier.height(65.dp))
+                        Text(
+                            modifier = Modifier.fillMaxSize(),
+                            fontSize = 26.sp,
+                            text = "PUSH TO\nSTART",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Status indicator
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.1f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Ready for Payment",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Insert or tap your card",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    )
-                }
-            }
+            // Instructions
+         //   Text(
+           //     text = "Hold the button for 1 second to begin",
+             //   style = MaterialTheme.typography.bodyMedium.copy(
+             //       color = Color.White.copy(alpha = 0.8f)
+               // ),
+              //  textAlign = TextAlign.Center
+           // )
         }
         
         // Hidden message for admin access

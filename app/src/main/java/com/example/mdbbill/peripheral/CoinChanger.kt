@@ -6,7 +6,7 @@ import android.util.Log
 import java.util.*
 
 class CoinChanger(
-    mdbMaster: MdbMaster,
+    mdbMaster: MdbMaster?,
     handler: Handler
 ) : MdbDeviceBase(mdbMaster, handler) {
     
@@ -76,6 +76,36 @@ class CoinChanger(
      */
     private var coinChangerTimer: Timer? = null
     private var maxNonRespTimerTask: TimerTask? = null
+    
+    /**
+     * Helper function to safely send MDB commands
+     * Returns -1 if in simulation mode, otherwise returns the actual result
+     */
+    private fun sendMdbCommand(cmdBuffer: ByteArray, length: Int, response: ByteArray): Int {
+        return if (mdbMaster == null) {
+            // Simulation mode - return success
+            Log.d(Constant.TAG, "Simulation mode: Simulating MDB command success")
+            response[0] = Constant.ACK.toByte()
+            1
+        } else {
+            // Real hardware mode
+            mdbMaster.sendCommand(cmdBuffer, length, response)
+        }
+    }
+    
+    /**
+     * Helper function to safely send MDB answers
+     * Does nothing in simulation mode, otherwise sends the answer
+     */
+    private fun sendMdbAnswer(answer: Int) {
+        if (mdbMaster == null) {
+            // Simulation mode - do nothing
+            Log.d(Constant.TAG, "Simulation mode: Simulating MDB answer $answer")
+        } else {
+            // Real hardware mode
+            mdbMaster.sendAnswer(answer)
+        }
+    }
 
     private fun maxNonRespTimerStart() {
         if (coinChangerTimer == null) {
@@ -123,7 +153,7 @@ class CoinChanger(
 
         cmdBuffer[0] = RESET.toByte()
         cmdBuffer[1] = cmdBuffer[0]
-        val ret = mdbMaster.sendCommand(cmdBuffer, 2, response)
+        val ret = sendMdbCommand(cmdBuffer, 2, response)
         
         // If response size is not 1 that means its not a correct response
         // or received NAK - in this case, the command would be re-sent
@@ -154,7 +184,7 @@ class CoinChanger(
         }
         cmdBuffer[9] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 10, response)
+        val ret = sendMdbCommand(cmdBuffer, 10, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
@@ -162,7 +192,7 @@ class CoinChanger(
         if (ret == 1 && response[0] == Constant.ACK.toByte()) {
             actuator = CoinChangerAction.ACT_EXPANSION_IDENTIFICATION
         } else if (ret > 1) {
-            mdbMaster.sendAnswer(Constant.ACK)
+            sendMdbAnswer(Constant.ACK)
             // Parse setup response
             featureLevel = response[1].toInt()
             coinTypeSupport = response[2].toInt()
@@ -177,7 +207,7 @@ class CoinChanger(
         val response = ByteArray(36)
         cmdBuffer[0] = POLL.toByte()
         cmdBuffer[1] = POLL.toByte()
-        val ret = mdbMaster.sendCommand(cmdBuffer, 2, response)
+        val ret = sendMdbCommand(cmdBuffer, 2, response)
         
         // Transmission failure, return directly, the command would be re-sent
         if (!isTransmissionSuccess(ret)) {
@@ -193,7 +223,7 @@ class CoinChanger(
         // 1. reply ACK to peripheral
         // 2. cancel Max non response timer
         // 3. handle response data
-        mdbMaster.sendAnswer(Constant.ACK)
+        sendMdbAnswer(Constant.ACK)
         
         when (response[0].toInt()) {
             ACTIVITY_TYPE_COINS_DEPOSITED -> {
@@ -238,13 +268,13 @@ class CoinChanger(
         }
         cmdBuffer[2] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 3, response)
+        val ret = sendMdbCommand(cmdBuffer, 3, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
 
         if (ret > 1) {
-            mdbMaster.sendAnswer(Constant.ACK)
+            sendMdbAnswer(Constant.ACK)
             // Parse identification response
             System.arraycopy(response, 1, manufacturerCode, 0, 3)
             System.arraycopy(response, 4, serialNumber, 0, 12)
@@ -271,7 +301,7 @@ class CoinChanger(
         }
         cmdBuffer[6] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 7, response)
+        val ret = sendMdbCommand(cmdBuffer, 7, response)
         if (ret != 1 || response[0] != Constant.ACK.toByte()) {
             return
         }
@@ -283,6 +313,30 @@ class CoinChanger(
     }
 
     override fun process() {
+        // In simulation mode, only process specific actions, not continuous polling
+        if (mdbMaster == null) {
+            when (actuator) {
+                CoinChangerAction.ACT_RESET -> {
+                    // Simulate successful reset
+                    actuator = CoinChangerAction.ACT_POLL
+                    isOnline = true
+                    initializingSequenceFinish = true
+                    Log.d(Constant.TAG, "Simulation mode: CoinChanger reset completed")
+                }
+                // Skip continuous polling in simulation mode
+                CoinChangerAction.ACT_POLL -> {
+                    // Do nothing in simulation mode to prevent infinite loop
+                }
+                else -> {
+                    // For other actions, just log and set to POLL
+                    Log.d(Constant.TAG, "Simulation mode: Skipping action $actuator")
+                    actuator = CoinChangerAction.ACT_POLL
+                }
+            }
+            return
+        }
+        
+        // Real hardware mode - process normally
         when (actuator) {
             CoinChangerAction.ACT_RESET -> reset()
             CoinChangerAction.ACT_SETUP -> setup()

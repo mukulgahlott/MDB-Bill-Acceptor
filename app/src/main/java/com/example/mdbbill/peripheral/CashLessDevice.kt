@@ -7,7 +7,7 @@ import com.example.mdbbill.mdb.VendingMachineController
 import java.util.*
 
 class CashLessDevice(
-    mdbMaster: MdbMaster,
+    mdbMaster: MdbMaster?,
     handler: Handler
 ) : MdbDeviceBase(mdbMaster, handler) {
     
@@ -121,6 +121,36 @@ class CashLessDevice(
      * Timer for Non-Response time
      */
     private var cashLessTimer: Timer? = null
+    
+    /**
+     * Helper function to safely send MDB commands
+     * Returns -1 if in simulation mode, otherwise returns the actual result
+     */
+    private fun sendMdbCommand(cmdBuffer: ByteArray, length: Int, response: ByteArray): Int {
+        return if (mdbMaster == null) {
+            // Simulation mode - return success
+            Log.d(Constant.TAG, "Simulation mode: Simulating MDB command success")
+            response[0] = Constant.ACK.toByte()
+            1
+        } else {
+            // Real hardware mode
+            mdbMaster.sendCommand(cmdBuffer, length, response)
+        }
+    }
+    
+    /**
+     * Helper function to safely send MDB answers
+     * Does nothing in simulation mode, otherwise sends the answer
+     */
+    private fun sendMdbAnswer(answer: Int) {
+        if (mdbMaster == null) {
+            // Simulation mode - do nothing
+            Log.d(Constant.TAG, "Simulation mode: Simulating MDB answer $answer")
+        } else {
+            // Real hardware mode
+            mdbMaster.sendAnswer(answer)
+        }
+    }
     private var maxNonRespTimerTask: TimerTask? = null
 
     private fun maxNonRespTimerStart() {
@@ -169,7 +199,7 @@ class CashLessDevice(
 
         cmdBuffer[0] = CASHLESS_RESET.toByte()
         cmdBuffer[1] = cmdBuffer[0]
-        val ret = mdbMaster.sendCommand(cmdBuffer, 2, response)
+        val ret = sendMdbCommand(cmdBuffer, 2, response)
         
         // If response size is not 1 that means its not a correct response
         // or received NAK - in this case, the command would be re-sent
@@ -185,7 +215,7 @@ class CashLessDevice(
         val response = ByteArray(36)
         cmdBuffer[0] = CASHLESS_POLL.toByte()
         cmdBuffer[1] = CASHLESS_POLL.toByte()
-        val ret = mdbMaster.sendCommand(cmdBuffer, 2, response)
+        val ret = sendMdbCommand(cmdBuffer, 2, response)
         
         // Transmission failure, return directly, the command would be re-sent
         if (!isTransmissionSuccess(ret)) {
@@ -206,7 +236,7 @@ class CashLessDevice(
         // 1. reply ACK to peripheral
         // 2. cancel Max non response timer
         // 3. handle response data
-        mdbMaster.sendAnswer(Constant.ACK)
+        sendMdbAnswer(Constant.ACK)
         
         when (response[0].toInt()) {
             RESP_ID_JUST_RESET -> {
@@ -294,12 +324,12 @@ class CashLessDevice(
         }
         cmdBuffer[6] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 7, response)
+        val ret = sendMdbCommand(cmdBuffer, 7, response)
 
         if (ret == 1 && response[0] == Constant.ACK.toByte()) {
             actuator = CashlessAction.ACT_SETUP_MAXMIN_PRICES
         } else if (ret == 9 && response[0] == RESP_ID_READER_CONFIG_DATA.toByte()) {
-            mdbMaster.sendAnswer(Constant.ACK)
+            sendMdbAnswer(Constant.ACK)
             featureLevel = response[1].toInt()
             currencyCode = (response[2].toInt() shl 8) or response[3].toInt()
             scaleFactor = response[4].toInt()
@@ -326,7 +356,7 @@ class CashLessDevice(
         }
         cmdBuffer[6] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 7, response)
+        val ret = sendMdbCommand(cmdBuffer, 7, response)
         if (ret == 1 && response[0] == Constant.ACK.toByte()) {
             actuator = CashlessAction.ACT_EXPANSION_REQUEST_ID
         }
@@ -355,11 +385,11 @@ class CashLessDevice(
         }
         cmdBuffer[index] = (checksum and 0xFF).toByte()
 
-        val ret = mdbMaster.sendCommand(cmdBuffer, 32, response)
+        val ret = sendMdbCommand(cmdBuffer, 32, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
-        mdbMaster.sendAnswer(Constant.ACK)
+        sendMdbAnswer(Constant.ACK)
 
         System.arraycopy(response, 1, manufacturerCode, 0, 3)
         System.arraycopy(response, 4, serialNumber, 0, 12)
@@ -396,7 +426,7 @@ class CashLessDevice(
         }
         cmdBuffer[6] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 7, response)
+        val ret = sendMdbCommand(cmdBuffer, 7, response)
         if (ret != 1 || response[0] != Constant.ACK.toByte()) {
             return
         }
@@ -416,7 +446,7 @@ class CashLessDevice(
         checksum = (cmdBuffer[0].toInt() and 0xFF) + (cmdBuffer[1].toInt() and 0xFF)
         cmdBuffer[2] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 3, response)
+        val ret = sendMdbCommand(cmdBuffer, 3, response)
         if (ret == 1 && response[0] == Constant.ACK.toByte()) {
             actuator = CashlessAction.ACT_POLL
         }
@@ -438,7 +468,7 @@ class CashLessDevice(
         }
         cmdBuffer[6] = (checksum and 0xFF).toByte()
 
-        val ret = mdbMaster.sendCommand(cmdBuffer, 7, response)
+        val ret = sendMdbCommand(cmdBuffer, 7, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
@@ -462,7 +492,7 @@ class CashLessDevice(
         checksum = (cmdBuffer[0].toInt() and 0xFF) + (cmdBuffer[1].toInt() and 0xFF)
         cmdBuffer[2] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 3, response)
+        val ret = sendMdbCommand(cmdBuffer, 3, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
@@ -477,34 +507,134 @@ class CashLessDevice(
         actuator = CashlessAction.ACT_POLL
     }
 
-    private fun vendSuccess() {
-        var checksum = 0
-        val response = ByteArray(36)
+    fun vendSuccess() {
+        Log.d(Constant.TAG, "vendSuccess() called - starting background thread for MDB communication")
         
-        cmdBuffer[0] = CASHLESS_VEND.toByte()
-        cmdBuffer[1] = SUBCMD_VEND_SUCCESS.toByte()
-        cmdBuffer[2] = ((itemNumber shr 8) and 0xFF).toByte()
-        cmdBuffer[3] = (itemNumber and 0xFF).toByte()
-        
-        for (i in 0..3) {
-            checksum += cmdBuffer[i].toInt() and 0xFF
-        }
-        cmdBuffer[4] = (checksum and 0xFF).toByte()
-        
-        val ret = mdbMaster.sendCommand(cmdBuffer, 5, response)
-        if (!isTransmissionSuccess(ret)) {
+        // Check if we're in simulation mode (no hardware)
+        if (mdbMaster == null) {
+            Log.d(Constant.TAG, "Simulation mode: Simulating VEND SUCCESS without hardware")
+            
+            // Simulate the MDB communication in a background thread
+            Thread {
+                try {
+                    // Simulate processing time
+                    Thread.sleep(100)
+                    
+                    if (itemNumber == 0) {
+                        Log.d(Constant.TAG, "SIMULATION: Amount-based vending successful: VMC received ${itemPrice} cents ($${itemPrice / 100.0})")
+                    } else {
+                        Log.d(Constant.TAG, "SIMULATION: Item-based vending successful: VMC received item $itemNumber")
+                    }
+                    
+                    // Simulate successful response
+                    actuator = CashlessAction.ACT_SESSION_COMPLETE
+                    handler.sendEmptyMessage(Event.EV_CASHLESS_VEND_APPROVED)
+                    
+                } catch (e: Exception) {
+                    Log.e(Constant.TAG, "Error in simulation vendSuccess: ${e.message}", e)
+                }
+            }.start()
             return
         }
+        
+        // Run MDB communication on background thread to avoid blocking UI
+        Thread {
+            try {
+                val cmdBuffer = ByteArray(36)
+                val response = ByteArray(36)
+                var checksum = 0
 
-        // If response size is not 1 that means its not a correct response for VEND SUCCESS
-        // or received NAK - in this case, the command would be re-sent
-        if (ret != 1 || response[0] == Constant.NAK.toByte()) {
-            return
-        }
+                // Send VEND SUCCESS directly (payment already processed in app)
+                cmdBuffer[0] = CASHLESS_VEND.toByte()
+                cmdBuffer[1] = SUBCMD_VEND_SUCCESS.toByte()
+                
+                // Check if this is amount-based vending (itemNumber = 0) or item-based vending
+                if (itemNumber == 0) {
+                    // Amount-based vending: Send user's selected amount to VMC
+                    cmdBuffer[2] = ((itemPrice shr 8) and 0xFF).toByte()
+                    cmdBuffer[3] = (itemPrice and 0xFF).toByte()
+                    
+                    Log.d(Constant.TAG, "VEND SUCCESS: Sending amount ${itemPrice} cents ($${itemPrice / 100.0}) to VMC")
+                } else {
+                    // Item-based vending: Send item number to VMC
+                    cmdBuffer[2] = ((itemNumber shr 8) and 0xFF).toByte()
+                    cmdBuffer[3] = (itemNumber and 0xFF).toByte()
+                    
+                    Log.d(Constant.TAG, "VEND SUCCESS: Sending item number $itemNumber to VMC")
+                }
 
-        // Received ACK, SESSION_COMPLETE would be sent
-        actuator = CashlessAction.ACT_SESSION_COMPLETE
+                // Calculate checksum
+                for (i in 0..3) {
+                    checksum += cmdBuffer[i].toInt() and 0xFF
+                }
+                cmdBuffer[4] = (checksum and 0xFF).toByte()
+
+                // Log the MDB command being sent
+                val cmdString = cmdBuffer.take(5).joinToString(" ") { "0x%02X".format(it.toInt() and 0xFF) }
+                Log.d(Constant.TAG, "Sending VEND SUCCESS command: $cmdString")
+
+                val ret = sendMdbCommand(cmdBuffer, 5, response)
+
+                if (isTransmissionSuccess(ret) && ret == 1 && response[0].toInt() != Constant.NAK) {
+                    actuator = CashlessAction.ACT_SESSION_COMPLETE
+                    
+                    if (itemNumber == 0) {
+                        Log.d(Constant.TAG, "Amount-based vending successful: VMC received ${itemPrice} cents")
+                    } else {
+                        Log.d(Constant.TAG, "Item-based vending successful: VMC received item $itemNumber")
+                    }
+                    
+                    // Notify that payment was successful and VMC can process the amount/item
+                    handler.sendEmptyMessage(Event.EV_CASHLESS_VEND_APPROVED)
+                } else {
+                    Log.e(Constant.TAG, "VEND SUCCESS command failed: ret=$ret, response=${response[0].toInt() and 0xFF}")
+                }
+            } catch (e: Exception) {
+                Log.e(Constant.TAG, "Error in vendSuccess: ${e.message}", e)
+            }
+        }.start()
     }
+
+//    private fun vendSuccess() {
+//        var checksum = 0
+//        val response = ByteArray(36)
+//
+//        cmdBuffer[0] = CASHLESS_VEND.toByte()
+//        cmdBuffer[1] = SUBCMD_VEND_SUCCESS.toByte()
+//        cmdBuffer[2] = ((itemNumber shr 8) and 0xFF).toByte()
+//        cmdBuffer[3] = (itemNumber and 0xFF).toByte()
+//
+//        for (i in 0..3) {
+//            checksum += cmdBuffer[i].toInt() and 0xFF
+//        }
+//        cmdBuffer[4] = (checksum and 0xFF).toByte()
+//
+//        val ret = mdbMaster.sendCommand(cmdBuffer, 5, response)
+//        if (!isTransmissionSuccess(ret)) {
+//            return
+//        }
+//
+//        // If response size is not 1 that means its not a correct response for VEND SUCCESS
+//        // or received NAK - in this case, the command would be re-sent
+//        if (ret != 1 || response[0] == Constant.NAK.toByte()) {
+//            return
+//        }
+//
+//        // Received ACK, SESSION_COMPLETE would be sent
+//        actuator = CashlessAction.ACT_SESSION_COMPLETE
+//    }
+
+
+
+        // New method for app-processed payments
+//        fun sendVendSuccessDirectly(itemNumber: Int, itemPrice: Int) {
+//            this.itemNumber = itemNumber
+//            this.itemPrice = itemPrice
+//            this.actuator = CashlessAction.ACT_VEND_SUCCESS
+//        }
+
+        // Modified vendSuccess to handle app payments
+
 
     private fun vendFailure() {
         var checksum = 0
@@ -515,7 +645,7 @@ class CashLessDevice(
         checksum = (cmdBuffer[0].toInt() and 0xFF) + (cmdBuffer[1].toInt() and 0xFF)
         cmdBuffer[2] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 3, response)
+        val ret = sendMdbCommand(cmdBuffer, 3, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
@@ -540,7 +670,7 @@ class CashLessDevice(
         checksum = (cmdBuffer[0].toInt() and 0xFF) + (cmdBuffer[1].toInt() and 0xFF)
         cmdBuffer[2] = (checksum and 0xFF).toByte()
         
-        val ret = mdbMaster.sendCommand(cmdBuffer, 3, response)
+        val ret = sendMdbCommand(cmdBuffer, 3, response)
         if (!isTransmissionSuccess(ret)) {
             return
         }
@@ -556,6 +686,34 @@ class CashLessDevice(
     }
 
     override fun process() {
+        // In simulation mode, only process specific actions, not continuous polling
+        if (mdbMaster == null) {
+            when (actuator) {
+                CashlessAction.ACT_RESET -> {
+                    // Simulate successful reset
+                    actuator = CashlessAction.ACT_POLL
+                    isOnline = true
+                    initializingSequenceFinish = true
+                    Log.d(Constant.TAG, "Simulation mode: CashLessDevice reset completed")
+                }
+                CashlessAction.ACT_VEND_SUCCESS -> vendSuccess()
+                CashlessAction.ACT_VEND_CANCEL -> vendCancel()
+                CashlessAction.ACT_VEND_FAILURE -> vendFailure()
+                CashlessAction.ACT_SESSION_COMPLETE -> sessionComplete()
+                // Skip continuous polling in simulation mode
+                CashlessAction.ACT_POLL -> {
+                    // Do nothing in simulation mode to prevent infinite loop
+                }
+                else -> {
+                    // For other actions, just log and set to POLL
+                    Log.d(Constant.TAG, "Simulation mode: Skipping action $actuator")
+                    actuator = CashlessAction.ACT_POLL
+                }
+            }
+            return
+        }
+        
+        // Real hardware mode - process normally
         when (actuator) {
             CashlessAction.ACT_RESET -> reset()
             CashlessAction.ACT_POLL -> poll()
@@ -604,6 +762,16 @@ class CashLessDevice(
     fun execDispensedSuccess(itemNumber: Int) {
         this.actuator = CashlessAction.ACT_VEND_SUCCESS
         this.itemNumber = itemNumber
+    }
+
+    fun execDispensedSuccessWithAmount(amount: Int) {
+        Log.d(Constant.TAG, "execDispensedSuccessWithAmount called with amount: $amount cents")
+//        this.actuator = CashlessAction.ACT_VEND_SUCCESS
+        this.itemPrice = amount
+        // Set itemNumber to 0 to indicate amount-based vending
+        this.itemNumber = 0
+        
+        Log.d(Constant.TAG, "Amount-based vending: User paid $amount cents ($${amount / 100.0}), sending to VMC")
     }
 
     fun execDispensedFailure() {

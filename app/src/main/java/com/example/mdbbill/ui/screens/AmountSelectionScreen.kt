@@ -9,8 +9,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
+import android.os.Handler
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mdbbill.R
+import com.example.mdbbill.mdb.VendingMachineController
 import com.example.mdbbill.viewmodel.AdminViewModel
 import com.example.mdbbill.viewmodel.PaymentResult
 import com.example.mdbbill.viewmodel.PaymentViewModel
@@ -34,6 +38,7 @@ import com.example.mdbbill.viewmodel.PaymentViewModel
 @Composable
 fun AmountSelectionScreen(
     viewModel: PaymentViewModel,
+    eventHandler: Handler,
     adminViewModel: AdminViewModel = viewModel(),
     onBack: () -> Unit
 ) {
@@ -44,6 +49,36 @@ fun AmountSelectionScreen(
     val predefinedAmount2 by adminViewModel.predefinedAmount2.collectAsStateWithLifecycle()
     val predefinedAmount1 by adminViewModel.predefinedAmount1.collectAsStateWithLifecycle()
     val predefinedAmount3 by adminViewModel.predefinedAmount3.collectAsStateWithLifecycle()
+
+    // VMC Lifecycle Management - Create fresh instance each time
+    val vmController = remember { VendingMachineController.createNewInstance() }
+    
+    LaunchedEffect(Unit) {
+        Log.d("AmountSelectionScreen", "Initializing fresh VMC connection...")
+        try {
+            if (vmController.initialize(eventHandler)) {
+                vmController.start()
+                Log.d("AmountSelectionScreen", "VMC connection established successfully")
+            } else {
+                Log.e("AmountSelectionScreen", "Failed to initialize VMC connection")
+            }
+        } catch (e: Exception) {
+            Log.e("AmountSelectionScreen", "Error initializing VMC connection", e)
+        }
+    }
+    
+    // Cleanup VMC when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            Log.d("AmountSelectionScreen", "Destroying VMC connection...")
+            try {
+                vmController.destroy()
+                Log.d("AmountSelectionScreen", "VMC connection destroyed")
+            } catch (e: Exception) {
+                Log.e("AmountSelectionScreen", "Error destroying VMC connection", e)
+            }
+        }
+    }
 
     // Snackbars below handle result visibility and clearing
 
@@ -64,7 +99,7 @@ fun AmountSelectionScreen(
                 .align(Alignment.TopStart)
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
                 tint = textPrimary
             )

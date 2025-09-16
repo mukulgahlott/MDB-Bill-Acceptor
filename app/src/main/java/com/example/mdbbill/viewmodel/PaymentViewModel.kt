@@ -7,6 +7,7 @@ import com.example.mdbbill.data.AppSettings
 import com.example.mdbbill.data.OperatingMode
 import com.example.mdbbill.data.PaymentProcessor
 import com.example.mdbbill.mdb.MdbController
+import com.example.mdbbill.mdb.VendingMachineController
 import com.example.mdbbill.payment.PaymentManager
 import com.example.mdbbill.payment.MyPosGateway
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     private val appSettings = AppSettings(application)
     private val paymentManager = PaymentManager(application)
     private val mdbController = MdbController(application)
+    private val vmController = VendingMachineController.getInstance()
 
     private val _selectedAmount = MutableStateFlow(0.0f)
     val selectedAmount: StateFlow<Float> = _selectedAmount.asStateFlow()
@@ -28,6 +30,9 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     private val _isPaymentProcessing = MutableStateFlow(false)
     val isPaymentProcessing: StateFlow<Boolean> = _isPaymentProcessing.asStateFlow()
 
+    // Track current item for vending machine operations (optional)
+    private var currentItemNumber: Int = 0
+
     private val _paymentResult = MutableStateFlow<PaymentResult?>(null)
     val paymentResult: StateFlow<PaymentResult?> = _paymentResult.asStateFlow()
 
@@ -37,6 +42,10 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
 
     fun setCustomAmount(amount: String) {
         _customAmount.value = amount
+    }
+
+    fun setCurrentItem(itemNumber: Int) {
+        currentItemNumber = itemNumber
     }
 
     fun processPayment() {
@@ -62,10 +71,21 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         }
 
         if (OperatingMode.TRAINING == appSettings.operatingMode){
-
-            mdbController.onPaymentSuccess(amount)
+            // Call vendSuccess to notify VMC that payment was successful (send amount)
+            val amountInCents = (amount * 100).toInt()
+            android.util.Log.d("PaymentViewModel", "Training mode: Processing payment of $amountInCents cents")
+            
+            val cashLessDevice = vmController.getCashLessDevice()
+            if (cashLessDevice != null) {
+                android.util.Log.d("PaymentViewModel", "CashLessDevice found, calling execDispensedSuccessWithAmount")
+                cashLessDevice.execDispensedSuccessWithAmount(amountInCents)
+                android.util.Log.d("PaymentViewModel", "Calling vendSuccess()")
+                cashLessDevice.vendSuccess()
+            } else {
+                android.util.Log.e("PaymentViewModel", "CashLessDevice is null!")
+            }
+            
             _paymentResult.value = PaymentResult.Success(amount, "AMOUNT SUCCESS")
-
         } else {
             viewModelScope.launch {
                 _isPaymentProcessing.value = true
@@ -84,8 +104,20 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         gateway.startPayment(amount) { success, message ->
                             viewModelScope.launch {
                                 if (success) {
-                                    // Payment successful, trigger MDB communication
-                                    mdbController.onPaymentSuccess(amount)
+                                    // Call vendSuccess to notify VMC that payment was successful (send amount)
+                                    val amountInCents = (amount * 100).toInt()
+                                    android.util.Log.d("PaymentViewModel", "Other gateway success: Processing payment of $amountInCents cents")
+                                    
+                                    val cashLessDevice = vmController.getCashLessDevice()
+                                    if (cashLessDevice != null) {
+                                        android.util.Log.d("PaymentViewModel", "CashLessDevice found, calling execDispensedSuccessWithAmount")
+                                        cashLessDevice.execDispensedSuccessWithAmount(amountInCents)
+                                        android.util.Log.d("PaymentViewModel", "Calling vendSuccess()")
+                                        cashLessDevice.vendSuccess()
+                                    } else {
+                                        android.util.Log.e("PaymentViewModel", "CashLessDevice is null!")
+                                    }
+                                    
                                     _paymentResult.value = PaymentResult.Success(amount, message)
                                 } else {
                                     _paymentResult.value = PaymentResult.Error(message)
@@ -128,8 +160,20 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 gateway.startPaymentWithActivity(activity, amount) { success, message ->
                     viewModelScope.launch {
                         if (success) {
-                            // Payment successful, trigger MDB communication
-                            mdbController.onPaymentSuccess(amount)
+                            // Call vendSuccess to notify VMC that payment was successful (send amount)
+                            val amountInCents = (amount * 100).toInt()
+                            android.util.Log.d("PaymentViewModel", "myPOS success: Processing payment of $amountInCents cents")
+                            
+                            val cashLessDevice = vmController.getCashLessDevice()
+                            if (cashLessDevice != null) {
+                                android.util.Log.d("PaymentViewModel", "CashLessDevice found, calling execDispensedSuccessWithAmount")
+                                cashLessDevice.execDispensedSuccessWithAmount(amountInCents)
+                                android.util.Log.d("PaymentViewModel", "Calling vendSuccess()")
+                                cashLessDevice.vendSuccess()
+                            } else {
+                                android.util.Log.e("PaymentViewModel", "CashLessDevice is null!")
+                            }
+                            
                             _paymentResult.value = PaymentResult.Success(amount, message)
                         } else {
                             _paymentResult.value = PaymentResult.Error(message)

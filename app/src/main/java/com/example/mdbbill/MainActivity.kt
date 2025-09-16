@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // Vending Machine Controller
+    // Vending Machine Controller - will be managed by AmountSelectionScreen
     private lateinit var vmController: VendingMachineController
     private lateinit var eventHandler: Handler
 
@@ -55,14 +55,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Initialize Vending Machine Controller
-        vmController = VendingMachineController.getInstance()
-        if (vmController.initialize(eventHandler)) {
-            vmController.start()
-            Log.d("MainActivity", "Vending Machine Controller initialized successfully")
-        } else {
-            Log.e("MainActivity", "Failed to initialize Vending Machine Controller")
-        }
+        // VMC will be created fresh for each AmountSelectionScreen instance
+        // vmController = VendingMachineController.getInstance()
 
         // Initialize MDB controller (legacy)
         val mdbController = MdbController(this)
@@ -90,7 +84,8 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         navController = navController,
                         adminViewModel = adminViewModel,
-                        paymentViewModel = paymentViewModel
+                        paymentViewModel = paymentViewModel,
+                        eventHandler = eventHandler
                     )
                 }
             }
@@ -117,8 +112,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Clean up Vending Machine Controller
-        vmController.destroy()
+        // VMC cleanup is now managed by AmountSelectionScreen
+        // vmController.destroy() - moved to AmountSelectionScreen lifecycle
     }
 
     private fun isLockTaskPermitted(): Boolean {

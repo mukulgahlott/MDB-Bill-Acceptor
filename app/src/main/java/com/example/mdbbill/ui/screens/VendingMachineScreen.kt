@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mdbbill.MainActivity
@@ -22,11 +23,12 @@ data class VendingProduct(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
 @Composable
 fun VendingMachineScreen() {
     val context = LocalContext.current
     val mainActivity = context as MainActivity
-    
+
     var selectedProduct by remember { mutableStateOf<VendingProduct?>(null) }
     var vendingStatus by remember { mutableStateOf("Ready") }
     var cashlessReady by remember { mutableStateOf(false) }
@@ -52,6 +54,17 @@ fun VendingMachineScreen() {
         vendingStatus = "All devices ready"
     }
 
+    // Example of how to integrate with PaymentViewModel:
+    // val paymentViewModel: PaymentViewModel = viewModel()
+    // 
+    // For amount-based vending (recommended):
+    // paymentViewModel.setSelectedAmount(product.price / 100.0f) // Convert cents to dollars
+    // paymentViewModel.processPayment() // This will send amount to VMC automatically
+    //
+    // For item-based vending (optional):
+    // paymentViewModel.setCurrentItem(selectedProduct.id)
+    // paymentViewModel.processPayment()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -70,8 +83,8 @@ fun VendingMachineScreen() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = if (cashlessReady && billValidatorReady && coinChangerReady) 
-                    MaterialTheme.colorScheme.primaryContainer 
+                containerColor = if (cashlessReady && billValidatorReady && coinChangerReady)
+                    MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.errorContainer
             )
         ) {
@@ -89,8 +102,8 @@ fun VendingMachineScreen() {
                 Text(
                     text = vendingStatus,
                     fontWeight = FontWeight.Bold,
-                    color = if (cashlessReady && billValidatorReady && coinChangerReady) 
-                        MaterialTheme.colorScheme.primary 
+                    color = if (cashlessReady && billValidatorReady && coinChangerReady)
+                        MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.error
                 )
             }
@@ -195,11 +208,11 @@ fun ProductCard(
         onClick = onProductSelected,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
             else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) 
+        border = if (isSelected)
             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         else null
     ) {
@@ -221,7 +234,7 @@ fun ProductCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Text(
                 text = "$${product.price / 100.0}",
                 fontWeight = FontWeight.Bold,
