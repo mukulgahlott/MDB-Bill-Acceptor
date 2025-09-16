@@ -28,6 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.mdbbill.R
 import com.example.mdbbill.mdb.VendingMachineController
 import com.example.mdbbill.viewmodel.AdminViewModel
@@ -319,6 +323,15 @@ fun AmountSelectionScreen(
                 .align(Alignment.TopEnd)
                 .padding(top = 16.dp, end = 16.dp)
         )
+
+        // Success Animation Overlay
+        SuccessAnimationOverlay(
+            visible = snackbarVisible && snackbarSuccess,
+            onAnimationComplete = {
+                snackbarVisible = false
+                viewModel.clearPaymentResult()
+            }
+        )
     }
 }
 
@@ -457,5 +470,76 @@ private fun DismissibleSnackbar(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+private fun SuccessAnimationOverlay(
+    visible: Boolean,
+    onAnimationComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var animationKey by remember { mutableStateOf(0) }
+    
+    // Reset animation key when visibility becomes true to force restart
+    LaunchedEffect(visible) {
+        if (visible) {
+            animationKey++
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier.fillMaxSize()
+    ) {
+        if (visible) {
+            SuccessAnimationContent(
+                key = animationKey,
+                onAnimationComplete = onAnimationComplete
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuccessAnimationContent(
+    key: Int,
+    onAnimationComplete: () -> Unit
+) {
+    // Load the Lottie composition
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.Asset("Success.json")
+    )
+    
+    // Control the animation - always start from beginning
+    val animationState by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1,
+        isPlaying = true,
+        restartOnPlay = true
+    )
+    
+    // Track when animation completes
+    LaunchedEffect(animationState) {
+        if (animationState == 1f) {
+            // Wait a bit before calling completion callback
+            kotlinx.coroutines.delay(1000)
+            onAnimationComplete()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.3f)),
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            progress = { animationState },
+            modifier = Modifier.size(300.dp)
+        )
     }
 }

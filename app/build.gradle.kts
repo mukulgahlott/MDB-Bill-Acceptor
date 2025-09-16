@@ -68,6 +68,9 @@ dependencies {
     // myPOS SDK
     implementation("com.mypos:mypossmartsdk:1.0.6")
     
+    // Lottie for animations
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
